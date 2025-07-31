@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Product, Brand
+from .models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 
@@ -9,7 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email',
-                  'first_name', 'last_name', "password"]
+                  'first_name', 'last_name', "password", "role"]
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -17,22 +17,13 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class ProductSerializer(serializers.ModelSerializer):
-    brand = serializers.PrimaryKeyRelatedField(
-        queryset=Brand.objects.all())
+class UpdateUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = Product
-        fields = "__all__"
-
-
-class UpdateProductSerializer(serializers.ModelSerializer):
-    brand = serializers.PrimaryKeyRelatedField(
-        queryset=Brand.objects.all(), required=False)
-
-    class Meta:
-        model = Product
-        fields = "__all__"
+        model = User
+        fields = ['id', 'username', 'email',
+                  'first_name', 'last_name', "password", "role"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -40,14 +31,14 @@ class UpdateProductSerializer(serializers.ModelSerializer):
             fields.required = False
 
 
-class BrandSerializer(serializers.ModelSerializer):
-    products = ProductSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Brand
-        fields = "__all__"
-
-
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["id"] = user.id
+        token["role"] = user.role
+        return token
 
-    username_field = 'email'
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data["id"] = self.user.id
+        return data
